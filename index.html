@@ -605,7 +605,18 @@ function exportar(tipo) {
   else if (tipo === 'mudancas30d') { dados = DADOS.mud30; nome = 'CND_mudancas_30dias'; }
 
   if (!dados || !dados.length) { alert('Nenhum dado para exportar.'); return; }
-  const ws = XLSX.utils.json_to_sheet(dados);
+
+  // Converte datas Date(ano,mes,dia) para DD/MM/YYYY antes de exportar
+  const camposDatas = ['Data de Emissão', 'Data de Vencimento', 'Data de Atualização'];
+  const dadosFormatados = dados.map(r => {
+    const novo = {...r};
+    camposDatas.forEach(campo => {
+      if (novo[campo]) novo[campo] = fmt(novo[campo]);
+    });
+    return novo;
+  });
+
+  const ws = XLSX.utils.json_to_sheet(dadosFormatados);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'CND');
   XLSX.writeFile(wb, nome + '_' + new Date().toLocaleDateString('pt-BR').replace(/\//g,'-') + '.xlsx');
