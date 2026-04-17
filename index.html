@@ -393,23 +393,40 @@ function trocarTab(tab, btn) {
   renderTabela();
 }
 
+function parseData(v) {
+  if (!v) return null;
+  const s = String(v);
+  // Formato Date(2026,3,17)
+  const m = s.match(/^Date\((\d+),(\d+),(\d+)\)$/);
+  if (m) return new Date(parseInt(m[1]), parseInt(m[2]), parseInt(m[3]));
+  // Formato DD/MM/YYYY
+  const p = s.split('/');
+  if (p.length === 3) return new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+  return null;
+}
+
 function trocarFiltro() {
-  const tipoBase   = document.querySelector('input[name="base"]:checked').value;
+  const tipoBase    = document.querySelector('input[name="base"]:checked').value;
   const tipoPeriodo = document.querySelector('input[name="periodo"]:checked').value;
 
   const fonte = DADOS[tipoBase];
-  const hoje_str = new Date().toLocaleDateString('pt-BR');
+  const hoje  = new Date();
   const limite30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   let filtrado = fonte;
   if (tipoPeriodo === 'hoje') {
-    filtrado = fonte.filter(r => (r['Data de Emissão']||'').includes(hoje_str));
+    filtrado = fonte.filter(r => {
+      const d = parseData(r['Data de Emissão']);
+      if (!d) return false;
+      return d.getDate() === hoje.getDate() &&
+             d.getMonth() === hoje.getMonth() &&
+             d.getFullYear() === hoje.getFullYear();
+    });
   } else if (tipoPeriodo === '30dias') {
     filtrado = fonte.filter(r => {
-      const d = r['Data de Emissão'] || '';
-      const parts = d.split('/');
-      if (parts.length !== 3) return false;
-      return new Date(parts[2], parts[1]-1, parts[0]) >= limite30;
+      const d = parseData(r['Data de Emissão']);
+      if (!d) return false;
+      return d >= limite30;
     });
   }
 
