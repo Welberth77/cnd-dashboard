@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard CND</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #f5f6fa; color: #222; }
+.header { background: #1565c0; color: white; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.header h1 { font-size: 20px; font-weight: 600; }
+.header span { font-size: 13px; opacity: 0.8; }
+.container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+.loading { text-align: center; padding: 60px; font-size: 16px; color: #888; }
+.spinner { display: inline-block; width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #1565c0; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.card { background: white; border-radius: 12px; padding: 20px; border: 1px solid #e8eaf0; }
+.card .label { font-size: 12px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.card .value { font-size: 32px; font-weight: 700; }
+.card .sub { font-size: 12px; color: #aaa; margin-top: 4px; }
+.card.blue .value { color: #1565c0; }
+.card.green .value { color: #2e7d32; }
+.card.red .value { color: #c62828; }
+.card.orange .value { color: #e65100; }
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.chart-box { background: white; border-radius: 12px; padding: 20px; border: 1px solid #e8eaf0; }
+.chart-box h3 { font-size: 14px; font-weight: 600; color: #444; margin-bottom: 16px; }
+.section { background: white; border-radius: 12px; padding: 20px; border: 1px solid #e8eaf0; margin-bottom: 16px; }
+.section h3 { font-size: 14px; font-weight: 600; color: #444; margin-bottom: 16px; }
+.btns { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+.btn { padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
+.btn-blue { background: #1565c0; color: white; }
+.btn-green { background: #2e7d32; color: white; }
+.btn-red { background: #c62828; color: white; }
+.btn-orange { background: #e65100; color: white; }
+.btn:hover { opacity: 0.85; }
+.filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.filters input { padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; flex: 1; min-width: 200px; }
+.filters select { padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; }
+.table-wrapper { width: 100%; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+th { background: #f5f6fa; padding: 10px 12px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #e8eaf0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+td { padding: 9px 12px; border-bottom: 1px solid #f0f0f0; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+th:nth-child(1), td:nth-child(1) { width: 35px; }
+th:nth-child(2), td:nth-child(2) { width: 20%; white-space: normal; word-break: break-word; }
+th:nth-child(3), td:nth-child(3) { width: 13%; }
+th:nth-child(4), td:nth-child(4) { width: 17%; }
+th:nth-child(5), td:nth-child(5) { width: 16%; white-space: normal; word-break: break-word; }
+th:nth-child(6), td:nth-child(6) { width: 9%; }
+th:nth-child(7), td:nth-child(7) { width: 9%; }
+th:nth-child(8), td:nth-child(8) { width: 10%; }
+tr:hover td { background: #fafafa; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.badge-neg { background: #e8f5e9; color: #2e7d32; }
+.badge-pos { background: #ffebee; color: #c62828; }
+.badge-out { background: #fff8e1; color: #e65100; }
+.badge-en  { background: #f3e5f5; color: #7b1fa2; }
+.badge-ind { background: #fff3e0; color: #f57c00; }
+.pagination { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: #666; }
+.pagination button { padding: 6px 12px; border-radius: 6px; border: 1px solid #ddd; background: white; cursor: pointer; }
+.pagination button:disabled { opacity: 0.4; cursor: default; }
+.tab-btns { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab-btn { padding: 8px 16px; border-radius: 8px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 13px; font-weight: 500; }
+.tab-btn.active { background: #1565c0; color: white !important; border-color: #1565c0 !important; }
+.seletor-base { background: white; border-radius: 12px; padding: 16px 20px; border: 1px solid #e8eaf0; margin-bottom: 20px; }
+.seletor-base .titulo { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 12px; }
+.seletor-base .opcoes { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+.opcao-base { cursor: pointer; display: flex; gap: 8px; align-items: flex-start; }
+.opcao-base input { margin-top: 3px; }
+.opcao-base .nome { font-size: 13px; font-weight: 600; }
+.opcao-base .desc { font-size: 11px; color: #888; max-width: 200px; }
+.info-base { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 13px; line-height: 1.6; border-left: 4px solid #1565c0; background: #f0f4ff; }
+@media (max-width: 900px) {
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .charts { grid-template-columns: 1fr; }
+  .container { padding: 16px; }
+  .seletor-base .opcoes { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Dashboard CND</h1>
+  <span id="ultima-atualizacao">Carregando...</span>
+</div>
+
+<div class="container">
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div>Carregando dados do Google Sheets...</div>
+  </div>
+
+  <div id="conteudo" style="display:none;">
+
+    <!-- Seletor de base e período -->
+    <div class="seletor-base">
+      <div style="display:flex;gap:40px;flex-wrap:wrap;">
+        <div>
+          <div class="titulo">Visualizar base:</div>
+          <div class="opcoes">
+            <label class="opcao-base">
+              <input type="radio" name="base" value="base" checked onchange="trocarFiltro()">
+              <div><div class="nome" style="color:#1565c0;">Base principal</div><div class="desc">Consolidada, sem duplicatas. Recomendado.</div></div>
+            </label>
+            <label class="opcao-base">
+              <input type="radio" name="base" value="completa" onchange="trocarFiltro()">
+              <div><div class="nome" style="color:#555;">Base completa (01/01)</div><div class="desc">Todos os registros desde 01/01, sem deduplicação.</div></div>
+            </label>
+          </div>
+        </div>
+        <div>
+          <div class="titulo">Período:</div>
+          <div class="opcoes">
+            <label class="opcao-base">
+              <input type="radio" name="periodo" value="todos" checked onchange="trocarFiltro()">
+              <div><div class="nome">Todos os dados</div><div class="desc">Sem filtro de data.</div></div>
+            </label>
+            <label class="opcao-base">
+              <input type="radio" name="periodo" value="30dias" onchange="trocarFiltro()">
+              <div><div class="nome">Últimos 30 dias</div><div class="desc">Filtrado por Data de Emissão.</div></div>
+            </label>
+            <label class="opcao-base">
+              <input type="radio" name="periodo" value="hoje" onchange="trocarFiltro()">
+              <div><div class="nome">Somente hoje</div><div class="desc">Apenas emissões de hoje.</div></div>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="info-base" id="info-base" style="border-left-color:#1565c0;background:#f0f4ff;">
+        <strong style="color:#1565c0;">Base principal</strong> — Dados consolidados e deduplicados. <strong>Recomendada para análises.</strong>
+      </div>
+    </div>
+
+    <!-- Cards -->
+    <div class="cards">
+      <div class="card blue"><div class="label">Total</div><div class="value" id="card-total">—</div><div class="sub">base selecionada</div></div>
+      <div class="card green"><div class="label">Negativa</div><div class="value" id="card-neg">—</div><div class="sub" id="sub-neg">—</div></div>
+      <div class="card red"><div class="label">Positiva</div><div class="value" id="card-pos">—</div><div class="sub" id="sub-pos">—</div></div>
+      <div class="card orange"><div class="label">Mudanças hoje</div><div class="value" id="card-mud">—</div><div class="sub">em relação à base</div></div>
+    </div>
+
+    <!-- Cards especiais -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+      <div class="card" style="border-left:4px solid #7b1fa2;">
+        <div class="label" style="color:#7b1fa2;">Positiva com efeito de negativa</div>
+        <div class="value" id="card-en" style="color:#7b1fa2;">—</div>
+        <div class="sub" id="sub-en">—</div>
+      </div>
+      <div class="card" style="border-left:4px solid #f57c00;">
+        <div class="label" style="color:#f57c00;">CND Indisponível</div>
+        <div class="value" id="card-ind" style="color:#f57c00;">—</div>
+        <div class="sub" id="sub-ind">—</div>
+      </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="charts">
+      <div class="chart-box">
+        <h3>Distribuição de situações</h3>
+        <div style="position:relative;height:220px;">
+          <canvas id="graficoPizza" role="img" aria-label="Distribuição de situações"></canvas>
+        </div>
+      </div>
+      <div class="chart-box">
+        <h3>Negativas x Positivas x Outras</h3>
+        <div style="position:relative;height:220px;">
+          <canvas id="graficoBarra" role="img" aria-label="Comparativo de situações"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Downloads -->
+    <div class="section">
+      <h3>Exportar dados</h3>
+      <div class="btns" id="btns-export">
+        <button class="btn btn-blue"  onclick="exportar('completo')">&#11015; Base completa</button>
+        <button class="btn btn-green" onclick="exportar('negativas')">&#11015; Negativas</button>
+        <button class="btn btn-red"   onclick="exportar('positivas')">&#11015; Positivas</button>
+        <button class="btn btn-orange" onclick="exportar('mudancas')">&#11015; Mudanças hoje</button>
+        <button class="btn" style="background:#795548;color:white;" onclick="exportar('mudancas30d')">&#11015; Mudanças 30 dias</button>
+        <button class="btn" style="background:#7b1fa2;color:white;" onclick="exportar('efeito_negativa')">&#11015; Efeito Negativa</button>
+        <button class="btn" style="background:#f57c00;color:white;" onclick="exportar('indisponivel')">&#11015; Indisponível</button>
+      </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="section">
+      <h3>Empresas</h3>
+      <div class="tab-btns">
+        <button class="tab-btn active" onclick="trocarTab('todas',this)">Todas</button>
+        <button class="tab-btn" onclick="trocarTab('negativas',this)">Negativas</button>
+        <button class="tab-btn" onclick="trocarTab('positivas',this)">Positivas</button>
+        <button class="tab-btn" style="color:#7b1fa2;border-color:#7b1fa2;" onclick="trocarTab('efeito_negativa',this)">Efeito Negativa</button>
+        <button class="tab-btn" style="color:#f57c00;border-color:#f57c00;" onclick="trocarTab('indisponivel',this)">Indisponível</button>
+        <button class="tab-btn" onclick="trocarTab('mudancas',this)">Mudanças hoje</button>
+        <button class="tab-btn" onclick="trocarTab('mudancas30d',this)">Mudanças 30 dias</button>
+      </div>
+      <div class="filters">
+        <input type="text" id="busca" placeholder="Buscar por empresa, inscrição..." oninput="filtrar()"/>
+        <select id="filtroSituacao" onchange="filtrar()">
+          <option value="">Todas as situações</option>
+          <option value="Negativa">Negativa</option>
+          <option value="Positiva">Positiva</option>
+          <option value="Positiva com efeito de negativa">Efeito de Negativa</option>
+          <option value="CND Indisponível">CND Indisponível</option>
+        </select>
+      </div>
+      <div class="table-wrapper">
+        <table id="tabela">
+          <thead><tr>
+            <th>ID</th><th>Cliente</th><th>Inscrição</th><th>Órgão</th>
+            <th>Situação</th><th>Emissão</th><th>Vencimento</th><th>Última Atualização</th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <button onclick="paginaAnterior()" id="btnAnterior">&#8592; Anterior</button>
+        <span id="infoPagina"></span>
+        <button onclick="proximaPagina()" id="btnProxima">Próxima &#8594;</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SHEET_ID = '1phecoTtmi9f9FfhoF6_6Y1Q5D9HHWkkmPOk4aFuBF6c';
+const ABAS = {
+  base:     'BASE_PRINCIPAL',
+  completa: 'BASE_COMPLETA',
+  mudancas: 'MUDANCAS_HOJE',
+  mud30:    'MUDANCAS_30DIAS'
+};
+
+// ── Estado global ──────────────────────────────────────
+const DADOS = { base: [], completa: [], mudancas: [], mud30: [] };
+let baseAtual = [];
+let tabAtual = 'todas';
+let dadosTabela = [];
+let dadosFilt = [];
+let paginaAtual = 1;
+const porPagina = 50;
+let chartPizza, chartBarra;
+
+// ── Carrega dados do Google Sheets ─────────────────────
+async function carregarAba(nomeAba) {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(nomeAba)}`;
+  const res  = await fetch(url);
+  const text = await res.text();
+  const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
+
+  if (!json.table || !json.table.rows) return [];
+
+  const cols = json.table.cols.map(c => c.label);
+  return json.table.rows.map(row => {
+    const r = {};
+    cols.forEach((col, i) => {
+      const cell = row.c[i];
+      r[col] = cell && cell.v != null ? String(cell.v) : '';
+    });
+    return r;
+  });
+}
+
+async function carregarTudo() {
+  try {
+    const [base, completa, mudancas, mud30] = await Promise.all([
+      carregarAba(ABAS.base),
+      carregarAba(ABAS.completa),
+      carregarAba(ABAS.mudancas),
+      carregarAba(ABAS.mud30)
+    ]);
+
+    DADOS.base     = base;
+    DADOS.completa = completa;
+    DADOS.mudancas = mudancas;
+    DADOS.mud30    = mud30;
+
+    // Atualiza horário
+    const agora = new Date();
+    document.getElementById('ultima-atualizacao').textContent =
+      'Atualizado em ' + agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+
+    // Esconde loading e mostra conteúdo
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('conteudo').style.display = 'block';
+
+    baseAtual = DADOS.base;
+    iniciarGraficos();
+    atualizarCards();
+    atualizarBotoes();
+    trocarTab('todas', document.querySelector('.tab-btn'));
+    renderTabela();
+
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<div style="color:#c62828;">❌ Erro ao carregar dados: ' + e.message + '</div>';
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────
+function sit(r) { return (r['Situação'] || r['Situação Atual'] || '').toLowerCase(); }
+function fmt(v) { return v != null && v !== '' ? v : '—'; }
+
+function badge(s) {
+  const sl = (s||'').toLowerCase();
+  if (sl === 'negativa') return '<span class="badge badge-neg">' + s + '</span>';
+  if (sl === 'positiva') return '<span class="badge badge-pos">' + s + '</span>';
+  if (sl === 'positiva com efeito de negativa') return '<span class="badge badge-en">' + s + '</span>';
+  if (sl === 'cnd indisponível') return '<span class="badge badge-ind">' + s + '</span>';
+  return '<span class="badge badge-out">' + (s||'—') + '</span>';
+}
+
+function calcular(dados) {
+  return {
+    total: dados.length,
+    neg: dados.filter(r => sit(r) === 'negativa').length,
+    pos: dados.filter(r => sit(r) === 'positiva').length,
+    en:  dados.filter(r => sit(r) === 'positiva com efeito de negativa').length,
+    ind: dados.filter(r => sit(r) === 'cnd indisponível').length
+  };
+}
+
+// ── Renderiza tabela ───────────────────────────────────
+function renderTabela() {
+  const inicio = (paginaAtual - 1) * porPagina;
+  const pagina = dadosFilt.slice(inicio, inicio + porPagina);
+  const totalPags = Math.ceil(dadosFilt.length / porPagina) || 1;
+  const isMud = tabAtual === 'mudancas' || tabAtual === 'mudancas30d';
+
+  let html = '';
+  pagina.forEach(r => {
+    const sitHtml = isMud
+      ? badge(r['Situação Anterior']) + ' → ' + badge(r['Situação Atual'])
+      : badge(r['Situação']);
+    html += '<tr><td>' + fmt(r['ID do Cliente']) + '</td><td>' + fmt(r['Cliente']) +
+      '</td><td>' + fmt(r['Inscrição']) + '</td><td>' + fmt(r['Órgão']) +
+      '</td><td>' + sitHtml + '</td><td>' + fmt(r['Data de Emissão']) +
+      '</td><td>' + fmt(r['Data de Vencimento']) + '</td><td>' + fmt(r['Data de Atualização']) + '</td></tr>';
+  });
+
+  document.getElementById('tbody').innerHTML = html;
+  document.getElementById('infoPagina').textContent = 'Página ' + paginaAtual + ' de ' + totalPags + ' (' + dadosFilt.length + ' registros)';
+  document.getElementById('btnAnterior').disabled = paginaAtual === 1;
+  document.getElementById('btnProxima').disabled  = paginaAtual >= totalPags;
+}
+
+function filtrar() {
+  const busca = document.getElementById('busca').value.toLowerCase();
+  const sit_f = document.getElementById('filtroSituacao').value.toLowerCase();
+  dadosFilt = dadosTabela.filter(r => {
+    const texto = [r['Cliente'],r['Inscrição'],r['ID do Cliente'],r['Órgão']].join(' ').toLowerCase();
+    const s = sit(r);
+    return (!busca || texto.includes(busca)) && (!sit_f || s.includes(sit_f));
+  });
+  paginaAtual = 1;
+  renderTabela();
+}
+
+function trocarTab(tab, btn) {
+  tabAtual = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('busca').value = '';
+  document.getElementById('filtroSituacao').value = '';
+
+  if (tab === 'todas')           dadosTabela = baseAtual.slice();
+  else if (tab === 'negativas')  dadosTabela = baseAtual.filter(r => sit(r) === 'negativa');
+  else if (tab === 'positivas')  dadosTabela = baseAtual.filter(r => sit(r) === 'positiva');
+  else if (tab === 'efeito_negativa') dadosTabela = baseAtual.filter(r => sit(r) === 'positiva com efeito de negativa');
+  else if (tab === 'indisponivel')    dadosTabela = baseAtual.filter(r => sit(r) === 'cnd indisponível');
+  else if (tab === 'mudancas')   dadosTabela = DADOS.mudancas;
+  else if (tab === 'mudancas30d') dadosTabela = DADOS.mud30;
+
+  dadosFilt = dadosTabela.slice();
+  paginaAtual = 1;
+  renderTabela();
+}
+
+function trocarFiltro() {
+  const tipoBase   = document.querySelector('input[name="base"]:checked').value;
+  const tipoPeriodo = document.querySelector('input[name="periodo"]:checked').value;
+
+  const fonte = DADOS[tipoBase];
+  const hoje_str = new Date().toLocaleDateString('pt-BR');
+  const limite30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  let filtrado = fonte;
+  if (tipoPeriodo === 'hoje') {
+    filtrado = fonte.filter(r => (r['Data de Emissão']||'').includes(hoje_str));
+  } else if (tipoPeriodo === '30dias') {
+    filtrado = fonte.filter(r => {
+      const d = r['Data de Emissão'] || '';
+      const parts = d.split('/');
+      if (parts.length !== 3) return false;
+      return new Date(parts[2], parts[1]-1, parts[0]) >= limite30;
+    });
+  }
+
+  baseAtual = filtrado;
+
+  const infos = {
+    base:     '<strong style="color:#1565c0;">Base principal</strong> — Dados consolidados e deduplicados.',
+    completa: '<strong style="color:#555;">Base completa (01/01)</strong> — Todos os registros desde 01/01. <strong>⚠️ Pode conter duplicatas.</strong>'
+  };
+  const periodos = { todos: ' Mostrando <strong>todos os dados</strong>.', '30dias': ' Filtrado pelos <strong>últimos 30 dias</strong>.', hoje: ' Filtrado por <strong>somente hoje</strong>.' };
+  const cores  = { base: '#1565c0', completa: '#555' };
+  const fundos = { base: '#f0f4ff', completa: '#f5f5f5' };
+
+  const el = document.getElementById('info-base');
+  el.innerHTML = infos[tipoBase] + periodos[tipoPeriodo];
+  el.style.borderLeftColor = cores[tipoBase];
+  el.style.background = fundos[tipoBase];
+
+  atualizarCards();
+  atualizarGraficos();
+  atualizarBotoes();
+  tabAtual = 'todas';
+  dadosTabela = baseAtual.slice();
+  dadosFilt   = baseAtual.slice();
+  document.getElementById('busca').value = '';
+  document.getElementById('filtroSituacao').value = '';
+  document.querySelectorAll('.tab-btn').forEach((b,i) => i === 0 ? b.classList.add('active') : b.classList.remove('active'));
+  paginaAtual = 1;
+  renderTabela();
+}
+
+function atualizarCards() {
+  const m = calcular(baseAtual);
+  const t = m.total || 1;
+  document.getElementById('card-total').textContent = m.total;
+  document.getElementById('card-neg').textContent   = m.neg;
+  document.getElementById('card-pos').textContent   = m.pos;
+  document.getElementById('card-en').textContent    = m.en;
+  document.getElementById('card-ind').textContent   = m.ind;
+  document.getElementById('card-mud').textContent   = DADOS.mudancas.length;
+  document.getElementById('sub-neg').textContent    = Math.round(m.neg/t*1000)/10 + '% do total';
+  document.getElementById('sub-pos').textContent    = Math.round(m.pos/t*1000)/10 + '% do total';
+  document.getElementById('sub-en').textContent     = Math.round(m.en/t*1000)/10  + '% do total';
+  document.getElementById('sub-ind').textContent    = Math.round(m.ind/t*1000)/10 + '% do total';
+}
+
+function iniciarGraficos() {
+  const m   = calcular(baseAtual);
+  const out = baseAtual.length - m.neg - m.pos - m.en - m.ind;
+  const labels = ['Negativa','Positiva','Efeito Negativa','Indisponível','Outras'];
+  const dados  = [m.neg, m.pos, m.en, m.ind, out];
+  const cores  = ['#2e7d32','#c62828','#7b1fa2','#f57c00','#888'];
+
+  chartPizza = new Chart(document.getElementById('graficoPizza'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: dados, backgroundColor: cores, borderWidth: 2, borderColor: '#fff' }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'bottom' } } }
+  });
+
+  chartBarra = new Chart(document.getElementById('graficoBarra'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Empresas', data: dados, backgroundColor: cores, borderRadius: 6 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+}
+
+function atualizarGraficos() {
+  const m   = calcular(baseAtual);
+  const out = baseAtual.length - m.neg - m.pos - m.en - m.ind;
+  const dados = [m.neg, m.pos, m.en, m.ind, out];
+  chartPizza.data.datasets[0].data = dados; chartPizza.update();
+  chartBarra.data.datasets[0].data = dados; chartBarra.update();
+}
+
+function atualizarBotoes() {
+  const m = calcular(baseAtual);
+  const btns = document.querySelectorAll('#btns-export .btn');
+  if (btns[0]) btns[0].innerHTML = '&#11015; Base completa (' + m.total + ')';
+  if (btns[1]) btns[1].innerHTML = '&#11015; Negativas (' + m.neg + ')';
+  if (btns[2]) btns[2].innerHTML = '&#11015; Positivas (' + m.pos + ')';
+  if (btns[3]) btns[3].innerHTML = '&#11015; Mudanças hoje (' + DADOS.mudancas.length + ')';
+  if (btns[4]) btns[4].innerHTML = '&#11015; Mudanças 30 dias (' + DADOS.mud30.length + ')';
+  if (btns[5]) btns[5].innerHTML = '&#11015; Efeito Negativa (' + m.en + ')';
+  if (btns[6]) btns[6].innerHTML = '&#11015; Indisponível (' + m.ind + ')';
+}
+
+function exportar(tipo) {
+  let dados, nome;
+  const s = r => sit(r);
+  if (tipo === 'completo')        { dados = baseAtual; nome = 'CND_completo'; }
+  else if (tipo === 'negativas')  { dados = baseAtual.filter(r => s(r) === 'negativa'); nome = 'CND_negativas'; }
+  else if (tipo === 'positivas')  { dados = baseAtual.filter(r => s(r) === 'positiva'); nome = 'CND_positivas'; }
+  else if (tipo === 'efeito_negativa') { dados = baseAtual.filter(r => s(r) === 'positiva com efeito de negativa'); nome = 'CND_efeito_negativa'; }
+  else if (tipo === 'indisponivel')    { dados = baseAtual.filter(r => s(r) === 'cnd indisponível'); nome = 'CND_indisponivel'; }
+  else if (tipo === 'mudancas')   { dados = DADOS.mudancas; nome = 'CND_mudancas'; }
+  else if (tipo === 'mudancas30d') { dados = DADOS.mud30; nome = 'CND_mudancas_30dias'; }
+
+  if (!dados || !dados.length) { alert('Nenhum dado para exportar.'); return; }
+  const ws = XLSX.utils.json_to_sheet(dados);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'CND');
+  XLSX.writeFile(wb, nome + '_' + new Date().toLocaleDateString('pt-BR').replace(/\//g,'-') + '.xlsx');
+}
+
+function paginaAnterior() { if (paginaAtual > 1) { paginaAtual--; renderTabela(); } }
+function proximaPagina()  { paginaAtual++; renderTabela(); }
+
+// Carrega os dados ao abrir a página
+carregarTudo();
+</script>
+</body>
+</html>
