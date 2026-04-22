@@ -329,13 +329,22 @@ async function carregarAba(nomeAba) {
   if (!json.table || !json.table.rows) return [];
 
   const cols = json.table.cols.map(c => c.label);
-  return json.table.rows.map(row => {
+  const registros = json.table.rows.map(row => {
     const r = {};
     cols.forEach((col, i) => {
       const cell = row.c[i];
       r[col] = cell && cell.v != null ? String(cell.v) : '';
     });
     return r;
+  });
+  // Remove linhas completamente vazias ou que são cabeçalhos duplicados
+  return registros.filter(r => {
+    const vals = Object.values(r);
+    if (!vals.some(v => v !== '')) return false;
+    // Remove linhas onde o ID do Cliente está vazio ou é um nome de coluna
+    const id = r['ID do Cliente'] || '';
+    if (id === '' || id === 'ID do Cliente') return false;
+    return true;
   });
 }
 
