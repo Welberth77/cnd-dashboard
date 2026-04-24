@@ -337,14 +337,19 @@ async function carregarAba(nomeAba) {
     });
     return r;
   });
-  // Remove linhas completamente vazias ou que são cabeçalhos duplicados
+  // Remove linhas inválidas
   return registros.filter(r => {
+    const keys = Object.keys(r);
     const vals = Object.values(r);
+    // Remove linhas completamente vazias
     if (!vals.some(v => v !== '')) return false;
-    // Só filtra por ID do Cliente se a coluna existir
+    // Remove linhas onde a chave é vazia (dado corrompido)
+    if (keys.length === 1 && keys[0] === '') return false;
+    // Para abas com ID do Cliente, exige que tenha valor numérico
     if ('ID do Cliente' in r) {
-      const id = r['ID do Cliente'] || '';
+      const id = String(r['ID do Cliente'] || '').trim();
       if (id === '' || id === 'ID do Cliente') return false;
+      if (!/^\d+/.test(id)) return false;
     }
     return true;
   });
