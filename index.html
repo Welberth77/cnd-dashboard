@@ -350,11 +350,12 @@ async function carregarAba(nomeAba) {
 
 async function carregarTudo() {
   try {
-    const [base, completa, mudancas, mud30] = await Promise.all([
+    const [base, completa, mudancas, mud30, ultimaAtualizacao] = await Promise.all([
       carregarAba(ABAS.base),
       carregarAba(ABAS.completa),
       carregarAba(ABAS.mudancas),
-      carregarAba(ABAS.mud30)
+      carregarAba(ABAS.mud30),
+      carregarAba('ULTIMA_ATUALIZACAO')
     ]);
 
     DADOS.base     = base;
@@ -362,10 +363,13 @@ async function carregarTudo() {
     DADOS.mudancas = mudancas;
     DADOS.mud30    = mud30;
 
-    // Atualiza horário
-    const agora = new Date();
-    document.getElementById('ultima-atualizacao').textContent =
-      'Atualizado em ' + agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    // Atualiza horário com data real do Sheets
+    let textoAtualizacao = 'Última atualização: desconhecida';
+    if (ultimaAtualizacao && ultimaAtualizacao.length > 0) {
+      const dataHora = ultimaAtualizacao[0]['Última Atualização'] || '';
+      if (dataHora) textoAtualizacao = 'Atualizado em ' + dataHora;
+    }
+    document.getElementById('ultima-atualizacao').textContent = textoAtualizacao;
 
     // Esconde loading e mostra conteúdo
     document.getElementById('loading').style.display = 'none';
