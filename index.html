@@ -366,7 +366,9 @@ async function carregarTudo() {
     // Atualiza horário com data real do Sheets
     let textoAtualizacao = 'Última atualização: desconhecida';
     if (ultimaAtualizacao && ultimaAtualizacao.length > 0) {
-      const dataHora = ultimaAtualizacao[0]['Última Atualização'] || '';
+      // Pega o primeiro valor disponível independente do nome da coluna
+      const primeiroRegistro = ultimaAtualizacao[0];
+      const dataHora = Object.values(primeiroRegistro).find(v => v && v !== '') || '';
       if (dataHora) textoAtualizacao = 'Atualizado em ' + dataHora;
     }
     document.getElementById('ultima-atualizacao').textContent = textoAtualizacao;
